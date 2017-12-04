@@ -1,0 +1,46 @@
+PI-Hole (https://pi-hole.net/) is quite a useful AD blocker acting as a DNS blackhole. This makes it ideal 
+as a parental filter as well. To be able to use it like this, the integration of a parental blacklist is necessary.
+In contrary to the AD blocklists used by PI-Hole, parental blacklists usually have different categories to choose
+from. This makes some changes to the default PI-Hole config necessary.
+Since I am in Germany, Shalla's blacklist is a good choice for a parental filter list. However, the scripts contained in
+this git should be modifiable to other blacklists as well. YMMV.
+
+This HowTo assumes PI-Hole to be installed with lighttpd under /var/www/html and pihole config files under /etc/pihole.
+All commands to be executed as root.
+
+* Set up a directory /var/www/shalla owned by www-data.www-data  (this is where the category and listfiles reside)
+* Put getshallagroups.sh in /root/bin, set up a cronjob to let it run daily (e.g. 3AM, this fetches the available categories)
+* Put getshalla.sh in /root/bin, set up a cronjob to let it run every fife minutes (checks for changes and rebuilds filter)
+* Put external.conf to /etc/lighttpd
+* Create a snakeoil certificate: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out /etc/lighttpd/cert.pem -days 365 -nodes
+* mkdir /etc/lighttpd/.htpasswd/
+* Copy hash.sh to /etc/lighttpd [1]
+* Run /etc/lighttpd/hash.sh admin Blocklists mypassword >>/etc/lighttpd/.htpasswd/lighttpd-htdigest.user
+* mkdir /var/www/html/lists, /var/www/html/errors
+* Put index.cgi to /var/www/html/lists, chmod to 755
+* Put index.html to /var/www/html/errors
+* Look for a nice 403 or whatever image and put it to /var/www/html/errors, changing index.html accordingly
+* Restart lighttpd
+* Go to https://hostname:8082/admin/, log in and go to Settings -> PI Hole's black lists
+  Add a new list http://localhost/shalla.txt, save and update
+* Test
+
+So what's this all about ?
+* The admin interface is now only accessible via https://hostname:8082/admin/
+* The standard behaviour for blocked sites has changed: Group/reason is not displayed. Instead a nice pic shows up
+* Blocked https sites are now displaying a blocking page as well
+* Blocked categories/sites and whitelisted sites are now managed by https://hostname:8082/lists/index.cgi
+* Access to the list page is password protected -unfortunately not yet coupled to PI-Hole's auth though
+* Available categories are fetched once a day
+* Blocklists, black- and whitelists are checked every five minutes for changes. In case of any change, the filter lists 
+  are rebuilt and put into pihole
+* White- and blacklists should NOT be maintained at the normal PI-Hole interface
+
+Security Note:
+Since the default config of PI-Hole is inherently unsafe, my modifications are as well. DANGER WILL ROBINSON !
+Make sure to put reasonable firewall-rules in place. Some local IPtables-rules are a nice touch too.
+
+Any errors ? Something missing ? Suggested improvements ? Drop me a note !
+
+References: 
+[1] https://jacobsalmela.com/2014/05/25/password-protect-a-lighttpd-web-server-on-a-raspberry-pi-using-mod-auth/
